@@ -1,20 +1,29 @@
 name: loyla_delivery
-description: Loyla Delivery App
-
+description: "Loyla Delivery app for couriers."
 publish_to: 'none'
-
 version: 1.0.0+1
 
 environment:
-  sdk: '^3.14.0-255.0.dev'
+  sdk: '>=3.5.0 <4.0.0'
 
 dependencies:
   flutter:
     sdk: flutter
+  cupertino_icons: ^1.0.8
+  go_router: ^14.8.1
+  google_fonts: ^6.3.3
+  video_player: ^2.9.0
 
-  provider: ^6.1.2
-  dio: ^5.7.0
-  go_router: ^14.2.7
-  google_fonts: ^6.2.1
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0
+
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/animations/
+    - assets/icons/
+    - assets/images/
+    - assets/videos/

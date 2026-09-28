@@ -1,9 +1,17 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:video_player/video_player.dart';
 
 import '../auth/login_screen.dart';
-import '../../const/app_colors.dart';
+
+const String kSplashVideo =
+    'assets/videos/SplashScreen_animation_for_LOYLA.mp4';
+const double kSplashPlaybackSpeed = 2.0;
+const Duration kLastFrameHold = Duration(seconds: 1);
+const Duration kMinBranding = Duration(seconds: 2);
+const Duration kBrandingCeiling = Duration(seconds: 12);
+const Color kSplashBackground = Color.fromARGB(255, 225, 224, 224);
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -12,116 +20,135 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen>
-    with SingleTickerProviderStateMixin {
-  late final AnimationController _controller;
-  late final Animation<double> _fadeAnim;
-  late final Animation<double> _scaleAnim;
-
-  static const Color _accentYellow = Color(
-    0xFFFFC107,
-  ); // no yellow in real palette — local only
+class _SplashScreenState extends State<SplashScreen> {
+  final Completer<void> _played = Completer<void>();
+  VideoPlayerController? _controller;
+  Timer? _holdTimer;
+  Timer? _ceilingTimer;
+  bool _disposed = false;
 
   @override
   void initState() {
     super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 700),
-    );
-    _fadeAnim = CurvedAnimation(parent: _controller, curve: Curves.easeOut);
-    _scaleAnim = Tween<double>(
-      begin: 0.85,
-      end: 1.0,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutBack));
-    _controller.forward();
-    _navigateNext();
+    _initVideo();
+    _waitThenNavigate();
   }
 
-  Future<void> _navigateNext() async {
-    await Future.delayed(const Duration(milliseconds: 1800));
+  void _finish() {
+    if (!_played.isCompleted) _played.complete();
+  }
+
+  Future<void> _initVideo() async {
+    // Backstop: a stuck video must never strand the user on the splash.
+    _ceilingTimer = Timer(kBrandingCeiling, _finish);
+
+    // Silent, and mixWithOthers so it doesn't pause the user's music.
+    final player = VideoPlayerController.asset(
+      kSplashVideo,
+      videoPlayerOptions: VideoPlayerOptions(mixWithOthers: true),
+    );
+    _controller = player;
+
+    try {
+      await player.initialize();
+      if (_disposed || !mounted) return;
+      await player.setVolume(0);
+      await player.setPlaybackSpeed(kSplashPlaybackSpeed);
+      player.addListener(_onTick);
+      setState(() {});
+      await player.play();
+    } catch (e) {
+      debugPrint('Splash video could not play: $e');
+      _finish();
+    }
+  }
+
+  void _onTick() {
+    final player = _controller;
+    if (player == null || _holdTimer != null) return;
+
+    final value = player.value;
+    if (!value.isInitialized) return;
+    // Android often stops a few ms before the reported duration.
+    if (!value.isCompleted && value.position < value.duration) return;
+
+    player.removeListener(_onTick);
+    unawaited(player.pause());
+    _holdTimer = Timer(kLastFrameHold, _finish);
+  }
+
+  Future<void> _waitThenNavigate() async {
+    await Future.wait([_played.future, Future<void>.delayed(kMinBranding)]);
     if (!mounted) return;
 
+    // TODO: check for a saved session here once real auth exists.
     Navigator.of(context).pushReplacement(
       PageRouteBuilder(
         transitionDuration: const Duration(milliseconds: 500),
         pageBuilder: (_, __, ___) => const LoginScreen(),
-        transitionsBuilder: (_, animation, __, child) {
-          return FadeTransition(opacity: animation, child: child);
-        },
+        transitionsBuilder: (_, animation, __, child) =>
+            FadeTransition(opacity: animation, child: child),
       ),
     );
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    _disposed = true;
+    _ceilingTimer?.cancel();
+    _holdTimer?.cancel();
+    _controller?.removeListener(_onTick);
+    _controller?.dispose();
+    _finish();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: kSplashBackground,
       body: Center(
-        child: FadeTransition(
-          opacity: _fadeAnim,
-          child: ScaleTransition(
-            scale: _scaleAnim,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.08),
-                    blurRadius: 12,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: AppColors.secondary,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.two_wheeler,
-                      color: _accentYellow,
-                      size: 30,
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        'LOYLA',
-                        style: Theme.of(context).textTheme.headlineMedium
-                            ?.copyWith(
-                              fontWeight: FontWeight.w900,
-                              color: AppColors.secondary,
-                              letterSpacing: 1,
-                            ),
-                      ),
-                      Text(
-                        'Deliver • Earn • Repeat',
-                        style: TextStyle(
-                          color: AppColors.text.shade300,
-                          fontSize: 13,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
+        child: Semantics(
+          label: 'Loyla',
+          child: _SplashVideoFrame(controller: _controller),
+        ),
+      ),
+    );
+  }
+}
+
+/// The film in a 4:3 window that crops the 16:9 source instead of letterboxing.
+class _SplashVideoFrame extends StatelessWidget {
+  const _SplashVideoFrame({required this.controller});
+
+  static const double frameAspect = 4 / 3;
+
+  final VideoPlayerController? controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final source = controller;
+
+    // Nothing until there is a first frame, so no black rectangle flashes.
+    if (source == null || !source.value.isInitialized) {
+      return const AspectRatio(
+        aspectRatio: frameAspect,
+        child: ColoredBox(color: kSplashBackground),
+      );
+    }
+
+    return AspectRatio(
+      aspectRatio: frameAspect,
+      child: ColoredBox(
+        color: kSplashBackground,
+        child: ClipRect(
+          child: FittedBox(
+            fit: BoxFit.cover,
+            clipBehavior: Clip.hardEdge,
+            child: SizedBox(
+              width: source.value.size.width,
+              height: source.value.size.height,
+              child: VideoPlayer(source),
             ),
           ),
         ),
