@@ -1,50 +1,117 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class AppTheme{
-    AppTheme._();
-    static const Color primaryColor = Color(0xFF1E88E5);
-    static const Color secondaryColor = Color(0xFF43A047);
-    static const Color errorColor = Color(0xFFE53935);
-    static const Color backgroundColor = Color(0xFFF5F7FA);
-    static const Color surfaceColor = Colors.white;
+import '../../const/app_colors.dart';
 
-    static ThemeData get LightTheme {
-        final colourScheme = ColorScheme.light(
-            seedColor: primaryColor,
-            primary: primaryColor,
-            secondary: secondaryColor,
-            error: errorColor,
-            surface: surfaceColor,
-        );
-        return ThemeData(
-            useMaterial3: true,
-            colorScheme: colorScheme,
-            scaffoldBackgroundColor: backgroundColor,
-            appBarTheme: const AppBarTheme(
-                centerTitle: true,
-                elevation: 0,
-                backgroundColor: primaryColor,
-                foregroundColor: Colors.white,
-            ),
-            elevatedButtonTheme: ElevatedButtonThemeData(
-                style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size.fromHeight(52),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                    ),
-                ),
-            ),
-            inputDecorationTheme: InputDecorationTheme(
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                ),
-            ),
-        );
+class AppTheme {
+  AppTheme._();
+  static ThemeData lightTheme(BuildContext context) {
+    final colorScheme = ColorScheme.fromSwatch(
+      primarySwatch: AppColors.primary,
+      accentColor: AppColors.accent.shade500,
+      backgroundColor: AppColors.background,
+    ).copyWith(onPrimary: Colors.white);
+
+    return ThemeData(
+      useMaterial3: true,
+      primarySwatch: AppColors.primary,
+      colorScheme: colorScheme,
+      scaffoldBackgroundColor: AppColors.background,
+
+      textTheme: GoogleFonts.nunitoTextTheme(),
+      fontFamily: GoogleFonts.nunito().fontFamily,
+
+      dividerTheme: const DividerThemeData(
+        color: Colors.grey,
+        thickness: 1,
+        space: 0,
+      ),
+
+      cardTheme: const CardThemeData(
+        clipBehavior: Clip.antiAlias,
+        color: Colors.white,
+        surfaceTintColor: Colors.white,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(20)),
+        ),
+      ),
+
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.white,
+        elevation: 0,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.all(Radius.circular(8)),
+        ),
+        titleTextStyle: GoogleFonts.poppins(
+          color: Colors.black,
+          letterSpacing: .5,
+          fontSize: MediaQuery.textScalerOf(context).scale(16),
+        ),
+      ),
+
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        hintStyle: TextStyle(
+          color: AppColors.text.shade300,
+          fontWeight: FontWeight.w400,
+        ),
+        border: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(10)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: const BorderRadius.all(Radius.circular(10)),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: const OutlineInputBorder(
+          borderRadius: BorderRadius.all(Radius.circular(15)),
+          borderSide: BorderSide(color: AppColors.primary, width: 2.5),
+        ),
+      ),
+
+      elevatedButtonTheme: ElevatedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: _MaterialStateExtender<Color>(
+            defaultValue: AppColors.primary.shade700,
+            states: {
+              WidgetState.pressed: AppColors.primary.shade500,
+              WidgetState.focused: AppColors.primary.shade300,
+              WidgetState.hovered: AppColors.primary.shade400,
+            },
+          ),
+          foregroundColor: const WidgetStatePropertyAll(Colors.white),
+          shape: WidgetStateProperty.all(
+            RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+      ),
+
+      appBarTheme: AppBarTheme(
+        backgroundColor: AppColors.background,
+        centerTitle: true,
+        scrolledUnderElevation: 0,
+        titleTextStyle: GoogleFonts.poppins(
+          color: Colors.black,
+          fontWeight: FontWeight.bold,
+          letterSpacing: .5,
+          fontSize: MediaQuery.textScalerOf(context).scale(16),
+        ),
+      ),
+    );
+  }
+}
+
+class _MaterialStateExtender<T> extends WidgetStateProperty<T> {
+  final T defaultValue;
+  final Map<WidgetState, T> states;
+
+  _MaterialStateExtender({required this.defaultValue, required this.states});
+
+  @override
+  T resolve(Set<WidgetState> states) {
+    for (final state in this.states.keys) {
+      if (states.contains(state)) return this.states[state]!;
     }
+    return defaultValue;
+  }
 }

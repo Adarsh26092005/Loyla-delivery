@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+
 import 'app/theme/app_theme.dart';
 import 'screens/splash/splash_screen.dart';
 
@@ -14,7 +15,7 @@ class LoylaDeliveryApp extends StatelessWidget {
     return MaterialApp(
       title: 'Loyla Delivery',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.lightTheme,
+      theme: AppTheme.lightTheme(context),
       home: const SplashScreen(),
     );
   }
